@@ -75,6 +75,7 @@ class LaunchDialog(QDialog):
         btn_row.addStretch()
         self._btn_close = QPushButton("Close")
         self._btn_close.setObjectName("btn_primary")
+        self._btn_close.setFocusPolicy(Qt.TabFocus)
         self._btn_close.setEnabled(False)
         self._btn_close.clicked.connect(self.accept)
         btn_row.addWidget(self._btn_close)
@@ -141,6 +142,7 @@ class VMPickerDialog(QDialog):
         layout.addWidget(lbl)
 
         self._list = QListWidget()
+        self._list.setFocusPolicy(Qt.StrongFocus)
         for vm in vms:
             item = QListWidgetItem(f"  {vm.vmid}    {vm.name}    {vm.status}")
             item.setData(Qt.UserRole, vm)
@@ -150,10 +152,12 @@ class VMPickerDialog(QDialog):
         btn_row = QHBoxLayout()
         btn_cancel = QPushButton("Cancel")
         btn_cancel.setObjectName("btn_secondary")
+        btn_cancel.setFocusPolicy(Qt.TabFocus)
         btn_cancel.clicked.connect(self.reject)
 
         btn_ok = QPushButton("Select")
         btn_ok.setObjectName("btn_primary")
+        btn_ok.setFocusPolicy(Qt.TabFocus)
         btn_ok.clicked.connect(self._accept)
 
         btn_row.addWidget(btn_cancel)

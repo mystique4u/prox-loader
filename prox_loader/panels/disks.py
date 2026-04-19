@@ -57,6 +57,7 @@ class DisksPanel(QWidget):
         hdr.addStretch()
         btn_refresh = QPushButton("↺  Refresh")
         btn_refresh.setObjectName("btn_secondary")
+        btn_refresh.setFocusPolicy(Qt.TabFocus)
         btn_refresh.clicked.connect(self.refresh)
         hdr.addWidget(btn_refresh)
         root.addLayout(hdr)
@@ -73,6 +74,7 @@ class DisksPanel(QWidget):
         vm_row.addSpacing(12)
         self._vm_combo = QComboBox()
         self._vm_combo.setMinimumWidth(260)
+        self._vm_combo.setFocusPolicy(Qt.StrongFocus)
         self._vm_combo.currentIndexChanged.connect(self._on_vm_changed)
         vm_row.addWidget(self._vm_combo)
         vm_row.addStretch()
@@ -86,8 +88,10 @@ class DisksPanel(QWidget):
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setFocusPolicy(Qt.NoFocus)
 
         body = QWidget()
+        body.setFocusPolicy(Qt.NoFocus)
         self._body = QVBoxLayout(body)
         self._body.setContentsMargins(0, 0, 4, 0)
         self._body.setSpacing(10)
@@ -107,6 +111,7 @@ class DisksPanel(QWidget):
 
         self._attached_list = QListWidget()
         self._attached_list.setMaximumHeight(160)
+        self._attached_list.setFocusPolicy(Qt.StrongFocus)
         self._body.addWidget(self._attached_list)
 
         btn_row = QHBoxLayout()
@@ -114,12 +119,14 @@ class DisksPanel(QWidget):
 
         self._btn_move = QPushButton("Move to VM…")
         self._btn_move.setObjectName("btn_small")
+        self._btn_move.setFocusPolicy(Qt.TabFocus)
         self._btn_move.setToolTip("Move selected disk to another VM")
         self._btn_move.clicked.connect(self._move_disk)
         btn_row.addWidget(self._btn_move)
 
         self._btn_detach = QPushButton("Detach Selected")
         self._btn_detach.setObjectName("btn_small_danger")
+        self._btn_detach.setFocusPolicy(Qt.TabFocus)
         self._btn_detach.clicked.connect(self._detach_disk)
         btn_row.addWidget(self._btn_detach)
 
@@ -131,6 +138,7 @@ class DisksPanel(QWidget):
 
         self._available_list = QListWidget()
         self._available_list.setMaximumHeight(160)
+        self._available_list.setFocusPolicy(Qt.StrongFocus)
         self._body.addWidget(self._available_list)
 
         # Options row
@@ -141,6 +149,7 @@ class DisksPanel(QWidget):
 
         self._opts_edit = QLineEdit("backup=0,discard=on")
         self._opts_edit.setMaximumWidth(280)
+        self._opts_edit.setFocusPolicy(Qt.StrongFocus)
         opts_row.addWidget(self._opts_edit)
         opts_row.addStretch()
         self._body.addLayout(opts_row)
@@ -150,12 +159,14 @@ class DisksPanel(QWidget):
 
         self._btn_custom = QPushButton("Attach Custom Spec…")
         self._btn_custom.setObjectName("btn_small")
+        self._btn_custom.setFocusPolicy(Qt.TabFocus)
         self._btn_custom.setToolTip("Attach a disk by specifying the full spec manually")
         self._btn_custom.clicked.connect(self._attach_custom)
         btn_row.addWidget(self._btn_custom)
 
         self._btn_attach = QPushButton("Attach Selected  +")
         self._btn_attach.setObjectName("btn_small_primary")
+        self._btn_attach.setFocusPolicy(Qt.TabFocus)
         self._btn_attach.clicked.connect(self._attach_disk)
         btn_row.addWidget(self._btn_attach)
 
@@ -180,6 +191,9 @@ class DisksPanel(QWidget):
         self._refresh_attached()
 
     # ── Public API ─────────────────────────────────────────────────────────────
+
+    def focus_first(self):
+        self._vm_combo.setFocus()
 
     def refresh(self):
         self._populate_vm_combo()

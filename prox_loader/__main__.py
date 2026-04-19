@@ -32,7 +32,9 @@ def main():
     app.setStyleSheet(STYLESHEET)
 
     window = MainWindow()
-    window.show()
+    window.showFullScreen()
+    window.activateWindow()
+    window.raise_()
 
     sys.exit(app.exec_())
 

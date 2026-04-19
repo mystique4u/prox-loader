@@ -46,11 +46,13 @@ class AutostartBanner(QFrame):
 
         btn_cancel = QPushButton("Cancel")
         btn_cancel.setObjectName("btn_small")
+        btn_cancel.setFocusPolicy(Qt.TabFocus)
         btn_cancel.clicked.connect(self._cancel)
         layout.addWidget(btn_cancel)
 
         btn_now = QPushButton("Launch Now")
         btn_now.setObjectName("btn_small_primary")
+        btn_now.setFocusPolicy(Qt.TabFocus)
         btn_now.clicked.connect(lambda: self.triggered.emit(self._vm.vmid))
         layout.addWidget(btn_now)
 
@@ -97,6 +99,7 @@ class VMCard(QFrame):
         self._build(is_autostart)
 
     def _build(self, is_autostart: bool):
+        self.setFocusPolicy(Qt.NoFocus)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(18, 14, 18, 14)
         layout.setSpacing(14)
@@ -151,6 +154,7 @@ class VMCard(QFrame):
         if not self.vm.is_running:
             btn_quick = QPushButton("⚡ Quick Start")
             btn_quick.setObjectName("btn_small_primary")
+            btn_quick.setFocusPolicy(Qt.TabFocus)
             btn_quick.setToolTip("Apply GPU + all USB passthrough and start VM")
             btn_quick.clicked.connect(
                 lambda: self.action_quick_start.emit(self.vm.vmid, self.vm.name)
@@ -159,6 +163,7 @@ class VMCard(QFrame):
 
         btn_pt = QPushButton("🔌 Passthrough")
         btn_pt.setObjectName("btn_small")
+        btn_pt.setFocusPolicy(Qt.TabFocus)
         btn_pt.setToolTip("Configure device passthrough for this VM")
         btn_pt.clicked.connect(
             lambda: self.action_passthrough.emit(self.vm.vmid, self.vm.name)
@@ -167,6 +172,7 @@ class VMCard(QFrame):
 
         btn_dk = QPushButton("💾 Disks")
         btn_dk.setObjectName("btn_small")
+        btn_dk.setFocusPolicy(Qt.TabFocus)
         btn_dk.setToolTip("Attach / detach storage disks")
         btn_dk.clicked.connect(
             lambda: self.action_disks.emit(self.vm.vmid, self.vm.name)
@@ -176,6 +182,7 @@ class VMCard(QFrame):
         if not self.vm.is_running:
             btn_start = QPushButton("▶ Start")
             btn_start.setObjectName("btn_small")
+            btn_start.setFocusPolicy(Qt.TabFocus)
             btn_start.setToolTip("Start VM without changing passthrough config")
             btn_start.clicked.connect(
                 lambda: self.action_start.emit(self.vm.vmid, self.vm.name)
@@ -184,6 +191,7 @@ class VMCard(QFrame):
         else:
             btn_stop = QPushButton("■ Stop")
             btn_stop.setObjectName("btn_small_danger")
+            btn_stop.setFocusPolicy(Qt.TabFocus)
             btn_stop.clicked.connect(
                 lambda: self.action_stop.emit(self.vm.vmid, self.vm.name)
             )
@@ -219,10 +227,11 @@ class VMListPanel(QWidget):
         hdr.addWidget(title)
         hdr.addStretch()
 
-        btn_refresh = QPushButton("↺  Refresh")
-        btn_refresh.setObjectName("btn_secondary")
-        btn_refresh.clicked.connect(self.refresh)
-        hdr.addWidget(btn_refresh)
+        self._btn_refresh = QPushButton("↺  Refresh")
+        self._btn_refresh.setObjectName("btn_secondary")
+        self._btn_refresh.setFocusPolicy(Qt.TabFocus)
+        self._btn_refresh.clicked.connect(self.refresh)
+        hdr.addWidget(self._btn_refresh)
         root.addLayout(hdr)
         root.addSpacing(4)
 
@@ -242,8 +251,10 @@ class VMListPanel(QWidget):
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setFocusPolicy(Qt.NoFocus)
 
         self._cards_widget = QWidget()
+        self._cards_widget.setFocusPolicy(Qt.NoFocus)
         self._cards_layout = QVBoxLayout(self._cards_widget)
         self._cards_layout.setContentsMargins(0, 0, 4, 0)
         self._cards_layout.setSpacing(10)
@@ -253,6 +264,10 @@ class VMListPanel(QWidget):
         root.addWidget(scroll, 1)
 
     # ── Public API ────────────────────────────────────────────────────────────
+
+    def focus_first(self):
+        """Move keyboard focus to the first interactive widget."""
+        self._btn_refresh.setFocus()
 
     def refresh(self):
         self._vms = backend.get_vm_list()

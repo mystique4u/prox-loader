@@ -1,0 +1,24 @@
+[Unit]
+Description=Prox Loader — VM Boot Manager (X session)
+After=getty@tty1.service
+Conflicts=getty@tty1.service
+
+[Service]
+Type=simple
+User=root
+StandardInput=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+KillMode=control-group
+TimeoutStopSec=5
+Environment=HOME=/root
+ExecStartPre=/bin/sh -c 'systemctl stop getty@tty1.service; sleep 0.3'
+ExecStart=/usr/bin/xinit /usr/bin/openbox-session -- :0 vt1 -keeptty -nolisten tcp
+ExecStopPost=/bin/systemctl --no-block start getty@tty1.service
+Restart=on-failure
+RestartSec=2
+
+# [Install] intentionally omitted — do NOT run systemctl enable.
+# Start manually: systemctl start prox-loader
+# Restart from SSH: systemctl stop prox-loader && systemctl start prox-loader

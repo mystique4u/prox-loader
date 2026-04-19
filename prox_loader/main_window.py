@@ -2,15 +2,24 @@
 main_window.py — Single window with sidebar navigation.
 """
 
-from PyQt5.QtCore import Qt
+import subprocess
+import sys
+
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal
+from PyQt5.QtGui import QKeySequence
 from PyQt5.QtWidgets import (
+    QApplication,
     QFrame,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QMainWindow,
+    QPlainTextEdit,
     QPushButton,
+    QShortcut,
     QSizePolicy,
     QStackedWidget,
+    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
@@ -19,6 +28,15 @@ from .panels.autostart import AutostartPanel
 from .panels.disks import DisksPanel
 from .panels.passthrough import PassthroughPanel
 from .panels.vm_list import VMListPanel
+
+
+def _quit_to_tty():
+    """Kill openbox so xinit exits → service stops → ExecStopPost restores getty."""
+    try:
+        subprocess.Popen(["pkill", "-x", "openbox"])
+    except Exception:
+        pass
+    sys.exit(0)
 
 
 # ── Sidebar nav button ─────────────────────────────────────────────────────────
@@ -41,6 +59,8 @@ class NavButton(QPushButton):
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 
 class Sidebar(QWidget):
+    navigate = pyqtSignal(int)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("sidebar")
@@ -74,11 +94,18 @@ class Sidebar(QWidget):
         ]
         for i, (icon, label) in enumerate(nav_items):
             btn = NavButton(icon, label)
+            btn.setFocusPolicy(Qt.TabFocus)
             btn.clicked.connect(lambda _, idx=i: self._on_click(idx))
             layout.addWidget(btn)
             self._buttons.append(btn)
 
         layout.addStretch()
+
+        btn_quit = QPushButton("✕  Quit")
+        btn_quit.setObjectName("btn_danger")
+        btn_quit.setFocusPolicy(Qt.TabFocus)
+        btn_quit.clicked.connect(_quit_to_tty)
+        layout.addWidget(btn_quit)
 
         version = QLabel("v1.0.0")
         version.setObjectName("sidebar_version")
@@ -89,8 +116,7 @@ class Sidebar(QWidget):
 
     def _on_click(self, index: int):
         self.set_active(index)
-        # bubble up to MainWindow
-        self.parent()._navigate(index)
+        self.navigate.emit(index)
 
     def set_active(self, index: int):
         if 0 <= self._active_index < len(self._buttons):
@@ -106,6 +132,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Prox Loader — VM Boot Manager")
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
         self.setMinimumSize(920, 620)
         self.resize(1100, 700)
 
@@ -119,6 +146,7 @@ class MainWindow(QMainWindow):
 
         # Sidebar
         self._sidebar = Sidebar(self)
+        self._sidebar.navigate.connect(self._navigate)
         root.addWidget(self._sidebar)
 
         # Stacked content
@@ -139,8 +167,15 @@ class MainWindow(QMainWindow):
         self._vm_list.vm_selected_for_passthrough.connect(self._on_vm_to_passthrough)
         self._vm_list.vm_selected_for_disks.connect(self._on_vm_to_disks)
 
+        # Keyboard shortcuts
+        QShortcut(QKeySequence("Ctrl+Q"), self).activated.connect(_quit_to_tty)
+        QShortcut(QKeySequence("F11"), self).activated.connect(self._toggle_fullscreen)
+
         # Initial load
         self._vm_list.refresh()
+
+        # Set keyboard focus after the window is shown
+        QTimer.singleShot(200, lambda: self._sidebar._buttons[0].setFocus())
 
     # ── Navigation ─────────────────────────────────────────────────────────────
 
@@ -151,11 +186,29 @@ class MainWindow(QMainWindow):
             panel.refresh()
         self._stack.setCurrentIndex(index)
         self._sidebar.set_active(index)
+        # Move keyboard focus into the new panel
+        if hasattr(panel, "focus_first"):
+            QTimer.singleShot(50, panel.focus_first)
 
     def _on_vm_to_passthrough(self, vmid: str, name: str):
         self._passthrough.set_vm(vmid)
         self._passthrough.refresh()
         self._navigate(1)
+
+    def _toggle_fullscreen(self):
+        if self.isFullScreen():
+            self.showMaximized()
+        else:
+            self.showFullScreen()
+
+    def keyPressEvent(self, event):
+        # Q returns to TTY when focus is NOT in a text-input widget
+        if event.key() == Qt.Key_Q:
+            focused = QApplication.focusWidget()
+            if not isinstance(focused, (QLineEdit, QTextEdit, QPlainTextEdit)):
+                _quit_to_tty()
+                return
+        super().keyPressEvent(event)
 
     def _on_vm_to_disks(self, vmid: str, name: str):
         self._disks.set_vm(vmid)

@@ -3,6 +3,18 @@ styles.py — Catppuccin Mocha dark theme for the entire application.
 """
 
 STYLESHEET = """
+/* ── Focus ring (keyboard navigation) ─────────────────── */
+QPushButton:focus, QCheckBox:focus, QComboBox:focus,
+QSpinBox:focus, QListWidget:focus, QLineEdit:focus {
+    outline: none;
+    border: 2px solid #cba6f7;
+}
+QPushButton#nav_btn:focus {
+    background-color: #2a2b3c;
+    border: 2px solid #cba6f7;
+    border-radius: 8px;
+}
+
 /* ── Base ─────────────────────────────────────────────── */
 QMainWindow, QDialog {
     background-color: #1e1e2e;

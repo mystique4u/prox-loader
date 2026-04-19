@@ -45,6 +45,9 @@ class AutostartPanel(QWidget):
 
     # ── Build UI ──────────────────────────────────────────────────────────────
 
+    def focus_first(self):
+        self._vm_combo.setFocus()
+
     def _build_ui(self):
         root = QVBoxLayout(self)
         root.setContentsMargins(36, 30, 36, 30)
@@ -71,11 +74,13 @@ class AutostartPanel(QWidget):
         vm_row = QHBoxLayout()
         self._vm_combo = QComboBox()
         self._vm_combo.setMinimumWidth(300)
+        self._vm_combo.setFocusPolicy(Qt.StrongFocus)
         self._vm_combo.currentIndexChanged.connect(self._on_setting_changed)
         vm_row.addWidget(self._vm_combo)
 
         btn_none = QPushButton("Clear")
         btn_none.setObjectName("btn_secondary")
+        btn_none.setFocusPolicy(Qt.TabFocus)
         btn_none.setToolTip("Disable autostart")
         btn_none.clicked.connect(self._clear_autostart)
         vm_row.addWidget(btn_none)
@@ -103,6 +108,7 @@ class AutostartPanel(QWidget):
         self._slider.setValue(10)
         self._slider.setTickInterval(10)
         self._slider.setTickPosition(QSlider.TicksBelow)
+        self._slider.setFocusPolicy(Qt.StrongFocus)
         self._slider.valueChanged.connect(self._sync_slider_to_spin)
         slider_row.addWidget(self._slider, 1)
 
@@ -115,6 +121,7 @@ class AutostartPanel(QWidget):
         self._spin.setMaximum(60)
         self._spin.setValue(10)
         self._spin.setSuffix(" sec")
+        self._spin.setFocusPolicy(Qt.StrongFocus)
         self._spin.valueChanged.connect(self._sync_spin_to_slider)
         slider_row.addWidget(self._spin)
 
@@ -154,6 +161,7 @@ class AutostartPanel(QWidget):
         btn_row = QHBoxLayout()
         self._btn_disable = QPushButton("Disable Autostart")
         self._btn_disable.setObjectName("btn_danger")
+        self._btn_disable.setFocusPolicy(Qt.TabFocus)
         self._btn_disable.clicked.connect(self._disable_autostart)
         btn_row.addWidget(self._btn_disable)
 
@@ -161,6 +169,7 @@ class AutostartPanel(QWidget):
 
         self._btn_save = QPushButton("Save Settings")
         self._btn_save.setObjectName("btn_primary")
+        self._btn_save.setFocusPolicy(Qt.TabFocus)
         self._btn_save.clicked.connect(self._save)
         btn_row.addWidget(self._btn_save)
 

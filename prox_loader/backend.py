@@ -60,8 +60,11 @@ class VMDisk:
 # ── Low-level subprocess helper ───────────────────────────────────────────────
 
 def _run(cmd: List[str]) -> Tuple[int, str, str]:
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    return result.returncode, result.stdout, result.stderr
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        return result.returncode, result.stdout, result.stderr
+    except FileNotFoundError:
+        return 1, "", f"command not found: {cmd[0]}"
 
 
 # ── VM operations ─────────────────────────────────────────────────────────────
@@ -233,17 +236,31 @@ def find_companion_audio(gpu: PCIDevice, all_pci: List[PCIDevice]) -> Optional[P
     return None
 
 
+def get_usb_controllers() -> List[PCIDevice]:
+    """Return PCI devices that are USB controllers (for PCI passthrough)."""
+    return [d for d in get_pci_devices() if "USB" in d.description.upper()]
+
+
 def get_usb_devices() -> List[USBDevice]:
     rc, out, _ = _run(["lsusb"])
     if rc != 0:
         return []
+    seen: set = set()
     devices = []
     for line in out.splitlines():
-        if "root hub" in line.lower():
+        line = line.strip()
+        if not line or "root hub" in line.lower():
             continue
-        m = re.search(r"([0-9a-f]{4}:[0-9a-f]{4})\s+(.*)", line)
-        if m:
-            devices.append(USBDevice(vendor_product=m.group(1), description=m.group(2).strip()))
+        # lsusb line: "Bus 001 Device 003: ID 1532:005c Razer USA, Ltd ..."
+        m = re.search(r"\bID\s+([0-9a-f]{4}:[0-9a-f]{4})\s+(.*)", line, re.IGNORECASE)
+        if not m:
+            continue
+        vp = m.group(1).lower()
+        desc = m.group(2).strip()
+        if vp in seen:
+            continue
+        seen.add(vp)
+        devices.append(USBDevice(vendor_product=vp, description=desc))
     return devices
 
 

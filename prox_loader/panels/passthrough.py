@@ -226,7 +226,7 @@ class PassthroughPanel(QWidget):
 
         # Audio companion toggle (global for all GPUs)
         self._chk_audio = QCheckBox("Include companion audio device (function .1)")
-        self._chk_audio.setChecked(True)
+        self._chk_audio.setChecked(False)
         self._chk_audio.setFocusPolicy(Qt.TabFocus)
         self._body_layout.addWidget(self._chk_audio)
         self._body_layout.addSpacing(8)
@@ -253,7 +253,7 @@ class PassthroughPanel(QWidget):
             for dev in gpu_devices:
                 item = QListWidgetItem(f"  {dev.short_addr}    {dev.description}")
                 item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-                item.setCheckState(Qt.Checked)
+                item.setCheckState(Qt.Unchecked)
                 item.setData(Qt.UserRole, dev)
                 self._gpu_list.addItem(item)
 
@@ -321,7 +321,7 @@ class PassthroughPanel(QWidget):
         self._body_layout.addSpacing(6)
 
         self._chk_usb_auto = QCheckBox("Auto-scan — pass all connected USB devices")
-        self._chk_usb_auto.setChecked(True)
+        self._chk_usb_auto.setChecked(False)
         self._chk_usb_auto.setFocusPolicy(Qt.TabFocus)
         self._chk_usb_auto.stateChanged.connect(self._on_usb_auto_changed)
         self._body_layout.addWidget(self._chk_usb_auto)
@@ -358,7 +358,7 @@ class PassthroughPanel(QWidget):
         self._usb_list.itemClicked.connect(self._toggle_usb_item)
         # list is always enabled so mouse scroll works
         self._body_layout.addWidget(self._usb_list)
-        self._on_usb_auto_changed(Qt.Checked)  # apply initial state
+        self._on_usb_auto_changed(Qt.Unchecked)  # apply initial state (manual mode)
 
     def _toggle_usb_item(self, item: QListWidgetItem):
         """Clicking anywhere on a row toggles its checkbox."""

@@ -31,9 +31,10 @@ from .panels.vm_list import VMListPanel
 
 
 def _quit_to_tty():
-    """Kill openbox so xinit exits → service stops → ExecStopPost restores getty."""
+    """Exit cleanly: ask openbox to quit gracefully so xinit exits 0,
+    service stops without restarting, ExecStopPost restores getty."""
     try:
-        subprocess.Popen(["pkill", "-x", "openbox"])
+        subprocess.Popen(["openbox", "--exit"])
     except Exception:
         pass
     sys.exit(0)

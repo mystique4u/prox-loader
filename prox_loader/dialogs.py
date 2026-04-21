@@ -2,9 +2,11 @@
 dialogs.py — Modal dialogs used across the application.
 """
 
+import subprocess
+import sys
 from typing import List, Optional
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import (
     QDialog,
     QHBoxLayout,
@@ -19,7 +21,7 @@ from PyQt5.QtWidgets import (
 )
 
 from . import backend
-from .workers import LaunchWorker
+from .workers import LaunchWorker, VMMonitorWorker
 
 
 # ── Launch dialog ─────────────────────────────────────────────────────────────
@@ -42,6 +44,10 @@ class LaunchDialog(QDialog):
         parent=None,
     ):
         super().__init__(parent)
+        self._vmid = vmid
+        self._has_passthrough = bool(gpus) or usb_auto or bool(usbs)
+        self._monitor: Optional[VMMonitorWorker] = None
+        self._restart_countdown = 5
         self.setWindowTitle(f"Launching — {name}")
         self.setMinimumSize(620, 420)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
@@ -107,17 +113,56 @@ class LaunchDialog(QDialog):
             self._progress.setStyleSheet(
                 "QProgressBar::chunk { background-color: #a6e3a1; border-radius: 5px; }"
             )
+            # If we started the VM, watch it and restart display when it stops
+            if self._worker.start_after and self._has_passthrough:
+                self._append(
+                    '<span style="color:#cdd6f4">⏳ VM is running — '
+                    "waiting for shutdown to return devices to host…</span>"
+                )
+                self._monitor = VMMonitorWorker(self._vmid, parent=self)
+                self._monitor.vm_stopped.connect(self._on_vm_stopped)
+                self._monitor.start()
+                return   # keep Close button disabled until VM stops
         else:
             self._progress.setStyleSheet(
                 "QProgressBar::chunk { background-color: #f38ba8; border-radius: 5px; }"
             )
         self._btn_close.setEnabled(True)
 
+    def _on_vm_stopped(self):
+        """VM has stopped — clean up passthrough config then restart X."""
+        self._append("<b>VM stopped.</b>")
+        if self._has_passthrough:
+            self._append("  Removing passthrough entries from config…")
+            try:
+                backend.remove_passthrough_entries(self._vmid)
+                self._append('  <span style="color:#a6e3a1">✓ Passthrough entries removed.</span>')
+            except Exception as exc:
+                self._append(f'  <span style="color:#f9e2af">⚠ Could not clean config: {exc}</span>')
+        self._restart_countdown = 5
+        self._tick_restart()
+
+    def _tick_restart(self):
+        if self._restart_countdown <= 0:
+            self._append("<b>Restarting display…</b>")
+            try:
+                subprocess.Popen(["pkill", "-x", "openbox"])
+            except Exception:
+                pass
+            sys.exit(0)
+        self._append(
+            f'<span style="color:#cdd6f4">  Restarting display in {self._restart_countdown}s…</span>'
+        )
+        self._restart_countdown -= 1
+        QTimer.singleShot(1000, self._tick_restart)
+
     def closeEvent(self, event):
         # Don't close while the worker is still running
         if self._worker.isRunning():
             event.ignore()
         else:
+            if self._monitor and self._monitor.isRunning():
+                self._monitor.stop()
             super().closeEvent(event)
 
 

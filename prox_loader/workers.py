@@ -9,6 +9,31 @@ from PyQt5.QtCore import QThread, pyqtSignal
 from . import backend
 
 
+class VMMonitorWorker(QThread):
+    """
+    Poll VM status every few seconds. Emits vm_stopped when the VM is no
+    longer running so the caller can clean up passthrough and restart X.
+    """
+
+    vm_stopped = pyqtSignal()
+
+    def __init__(self, vmid: str, interval_ms: int = 3000, parent=None):
+        super().__init__(parent)
+        self.vmid = vmid
+        self._interval = interval_ms
+        self._stop_flag = False
+
+    def stop(self):
+        self._stop_flag = True
+
+    def run(self):
+        while not self._stop_flag:
+            if backend.get_vm_status(self.vmid) != "running":
+                self.vm_stopped.emit()
+                return
+            self.msleep(self._interval)
+
+
 class LaunchWorker(QThread):
     """
     Apply passthrough configuration to a VM config file, then optionally start it.

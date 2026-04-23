@@ -45,7 +45,6 @@ class PassthroughPanel(QWidget):
         self._selected_vmid: str = ""
         self._all_pci: List[backend.PCIDevice] = []
         self._all_usb: List[backend.USBDevice] = []
-        self._all_usb_ctrl: List[backend.PCIDevice] = []
         self._scanned = False
         self._build_ui()
 
@@ -191,7 +190,6 @@ class PassthroughPanel(QWidget):
     def _scan_devices(self):
         self._all_pci = backend.get_pci_devices()
         self._all_usb = backend.get_usb_devices()
-        self._all_usb_ctrl = backend.get_usb_controllers()
         self._rebuild_body()
 
     # ── Device widgets ────────────────────────────────────────────────────────
@@ -205,20 +203,19 @@ class PassthroughPanel(QWidget):
 
         self._build_gpu_section()
         self._body_layout.addSpacing(16)
-        self._build_usb_ctrl_section()
-        self._body_layout.addSpacing(16)
         self._build_usb_section()
         self._body_layout.addStretch()
 
     def _build_gpu_section(self):
-        self._body_layout.addWidget(_section_label("GPU / PCI Devices"))
+        self._body_layout.addWidget(_section_label("GPU / PCI / USB Controllers"))
         self._body_layout.addSpacing(6)
 
         info = QLabel("lbl_info")
         info.setObjectName("lbl_info")
         info.setText(
             "First selected GPU will use x-vga=1. "
-            "Enable 'Audio companion' to auto-add the matching audio function."
+            "Enable \u2018Audio companion\u2019 to auto-add the matching audio function. "
+            "USB controllers are passed through as PCI devices."
         )
         info.setWordWrap(True)
         self._body_layout.addWidget(info)
@@ -231,28 +228,36 @@ class PassthroughPanel(QWidget):
         self._body_layout.addWidget(self._chk_audio)
         self._body_layout.addSpacing(8)
 
-        # GPU/display device checkboxes
+        # GPU/display + USB controller checkboxes
         _GPU_KEYWORDS = (
             "VGA", "DISPLAY", "3D CONTROLLER", "NVIDIA", "RADEON",
-            "INTEL GRAPHICS", "USB CONTROLLER",
+            "INTEL GRAPHICS",
         )
         gpu_devices = [
             d for d in self._all_pci
             if any(k in d.description.upper() for k in _GPU_KEYWORDS)
         ]
+        # USB controllers from lspci
+        usb_ctrl_devices = [
+            d for d in self._all_pci
+            if "USB" in d.description.upper() and "CONTROLLER" in d.description.upper()
+            and d not in gpu_devices
+        ]
+        all_devices = gpu_devices + usb_ctrl_devices
 
         self._gpu_list = QListWidget()
-        self._gpu_list.setMaximumHeight(160)
+        self._gpu_list.setMaximumHeight(220)
         self._gpu_list.setFocusPolicy(Qt.StrongFocus)
+        self._gpu_list.itemClicked.connect(self._toggle_gpu_item)
 
-        if not gpu_devices:
-            item = QListWidgetItem("No GPU/display devices found (lspci)")
+        if not all_devices:
+            item = QListWidgetItem("No GPU/PCI/USB controller devices found (lspci)")
             item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
             self._gpu_list.addItem(item)
         else:
-            for dev in gpu_devices:
+            for dev in all_devices:
                 item = QListWidgetItem(f"  {dev.short_addr}    {dev.description}")
-                item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+                item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsUserCheckable)
                 item.setCheckState(Qt.Unchecked)
                 item.setData(Qt.UserRole, dev)
                 self._gpu_list.addItem(item)
@@ -274,42 +279,7 @@ class PassthroughPanel(QWidget):
         add_row.addStretch()
         self._body_layout.addLayout(add_row)
 
-    def _build_usb_ctrl_section(self):
-        self._body_layout.addWidget(_section_label("USB Controllers (PCI Passthrough)"))
-        self._body_layout.addSpacing(6)
-
-        info = QLabel(
-            "Pass an entire USB controller to a VM. "
-            "All devices plugged into that controller will be available inside the VM."
-        )
-        info.setObjectName("lbl_info")
-        info.setWordWrap(True)
-        self._body_layout.addWidget(info)
-        self._body_layout.addSpacing(6)
-
-        self._usb_ctrl_list = QListWidget()
-        self._usb_ctrl_list.setMaximumHeight(120)
-        self._usb_ctrl_list.setFocusPolicy(Qt.StrongFocus)
-        self._usb_ctrl_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self._usb_ctrl_list.setTextElideMode(Qt.ElideNone)
-        self._usb_ctrl_list.setWordWrap(True)
-        self._usb_ctrl_list.itemClicked.connect(self._toggle_pci_item)
-
-        if not self._all_usb_ctrl:
-            item = QListWidgetItem("No USB controllers found (lspci)")
-            item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
-            self._usb_ctrl_list.addItem(item)
-        else:
-            for dev in self._all_usb_ctrl:
-                item = QListWidgetItem(f"{dev.short_addr}  {dev.description}")
-                item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsUserCheckable)
-                item.setCheckState(Qt.Unchecked)
-                item.setData(Qt.UserRole, dev)
-                self._usb_ctrl_list.addItem(item)
-
-        self._body_layout.addWidget(self._usb_ctrl_list)
-
-    def _toggle_pci_item(self, item: QListWidgetItem):
+    def _toggle_gpu_item(self, item: QListWidgetItem):
         if not (item.flags() & Qt.ItemIsUserCheckable):
             return
         item.setCheckState(
@@ -404,16 +374,8 @@ class PassthroughPanel(QWidget):
         return gpus
 
     def _selected_usb_ctrls(self) -> List[backend.PCIDevice]:
-        ctrls = []
-        if not hasattr(self, "_usb_ctrl_list"):
-            return ctrls
-        for i in range(self._usb_ctrl_list.count()):
-            item = self._usb_ctrl_list.item(i)
-            if item.checkState() == Qt.Checked:
-                dev = item.data(Qt.UserRole)
-                if dev:
-                    ctrls.append(dev)
-        return ctrls
+        # Now merged into gpu_list — nothing extra to gather
+        return []
 
     def _selected_usbs(self) -> List[backend.USBDevice]:
         usbs = []
